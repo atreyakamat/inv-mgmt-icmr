@@ -12,6 +12,8 @@ const nextConfig: NextConfig = {
   // Every page here depends on the session, so the app is fully dynamic.
   cacheComponents: false,
   poweredByHeader: false,
+  // Self-contained server bundle for the Docker image; Netlify uses its own adapter.
+  output: process.env.NEXT_OUTPUT === "standalone" ? "standalone" : undefined,
   turbopack: {
     rules: {
       "*.css": {

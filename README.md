@@ -26,6 +26,77 @@ database (RLS + security-definer functions), not only in the UI.
 Every member must complete authenticator-app MFA; without it the database
 returns nothing except their own profile row.
 
+## Run it offline (Docker)
+
+Everything runs on your machine: Postgres, Supabase Auth (with authenticator
+codes), the Data API, a mail catcher and the app. The same migrations and
+row-level security as production; nothing points at the hosted project.
+
+```bash
+git clone https://github.com/atreyakamat/inv-mgmt-icmr && cd inv-mgmt-icmr
+docker compose up --build --wait   # first run: a few minutes; returns when healthy
+```
+
+Needs Docker Desktop (Windows / macOS) or Docker Engine with Compose v2, and
+ports 3000, 8000, 8025 and 54322 free. Stop with `Ctrl+C` or `docker compose down`.
+
+| Open                    | What                                             |
+| ----------------------- | ------------------------------------------------ |
+| http://localhost:3000   | the app                                          |
+| http://localhost:8025   | Mailpit: invite and password-reset emails land here |
+| localhost:54322         | Postgres (`postgres` / `offline-dev-postgres-password`) |
+
+Demo accounts, all with password `Inventory-Demo-2026`:
+
+| Email                         | Role          |
+| ----------------------------- | ------------- |
+| admin@inventory.local         | Admin (hidden)|
+| super@inventory.local         | Super User    |
+| validator@inventory.local     | Validator     |
+| store@inventory.local         | Store Manager |
+| anil@ / sneha@ / kevin@inventory.local | User |
+
+Two-factor: all demo accounts share **one** authenticator entry. Scan
+`docker/demo-authenticator.png` once in Google Authenticator (it is also shown on
+the sign-in page), or add the key `STOREREGISTERDEMOAUTHENTICATOR22` by hand.
+People you invite from the People page enrol their own authenticator, exactly
+as in production; their invite email lands in Mailpit. The seed adds 6
+categories, 4 locations, 32 items, six weeks of stock movements and 18 requests
+at every stage of the workflow, all with a real audit trail.
+
+- Start over with fresh data: `docker compose down -v && docker compose up --wait`
+- Check it is healthy: `docker compose ps` (all `healthy`, `setup` exited 0) or
+  open http://localhost:3000/api/health
+- Behind a proxy that intercepts HTTPS (npm fails with `SELF_SIGNED_CERT_IN_CHAIN`),
+  build the two images with your proxy's CA, then start without rebuilding:
+  ```bash
+  docker build --secret id=npm_ca,src=ca.pem -t inv-mgmt-offline-setup docker/setup
+  docker build --secret id=npm_ca,src=ca.pem -f docker/app/Dockerfile -t inv-mgmt-offline-app \
+    --build-arg NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000 \
+    --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<ANON key from docker-compose.yml> .
+  docker compose up --no-build
+  ```
+- All secrets in `docker-compose.yml` are throwaway local values. Never use
+  them for a real deployment.
+
+## Checks
+
+Every pull request and every push to `main` runs, in GitHub Actions:
+
+| Job | What it proves |
+| --- | --- |
+| Typecheck, lint, build | the app compiles with zero lint warnings |
+| Database tests | 77 checks on RLS, roles, MFA gating and the request workflow |
+| Offline stack + browser | `docker compose up` from scratch, then every role signs in and does its part in a real browser; fails on any browser error |
+
+Run them locally:
+
+```bash
+npm run typecheck && npx eslint src --max-warnings=0
+npm run test:db                      # needs a scratch Postgres (see the script)
+docker compose up -d --build --wait && npm run test:e2e
+```
+
 ## Local development
 
 ```bash

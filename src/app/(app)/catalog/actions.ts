@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { friendlyError, intId, optStr, str, type ActionState } from "@/lib/actions";
+import { friendlyError, intId, optStr, str, type ActionState, guarded } from "@/lib/actions";
 
 type Kind = "categories" | "locations" | "items";
 
@@ -21,7 +21,7 @@ const itemSchema = z.object({
   reorder_level: z.coerce.number().int().min(0).max(1_000_000),
 });
 
-export async function saveEntry(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function saveEntryImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const kind = formData.get("kind") as Kind;
   const id = formData.get("id") ? intId.parse(formData.get("id")) : null;
   if (!["categories", "locations", "items"].includes(kind)) return { ok: false, error: "Unknown entry type." };
@@ -40,7 +40,7 @@ export async function saveEntry(_prev: ActionState, formData: FormData): Promise
   return { ok: true, message: id ? "Saved." : "Added." };
 }
 
-export async function setActive(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function setActiveImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const kind = formData.get("kind") as Kind;
   const id = intId.parse(formData.get("id"));
   const active = formData.get("active") === "true";
@@ -51,3 +51,6 @@ export async function setActive(_prev: ActionState, formData: FormData): Promise
   bump();
   return { ok: true, message: active ? "Reactivated." : "Retired. History is kept." };
 }
+
+export const saveEntry = guarded("saveEntry", saveEntryImpl);
+export const setActive = guarded("setActive", setActiveImpl);

@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthState } from "@/lib/auth";
 import { env } from "@/lib/env";
-import { friendlyError, intId, str, type ActionState } from "@/lib/actions";
+import { friendlyError, intId, str, type ActionState, guarded } from "@/lib/actions";
 
 /**
  * The only module that touches the service-role key. Every entry point first
@@ -45,7 +45,7 @@ const createSchema = z.object({
   role_id: intId,
 });
 
-export async function createAccount(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function createAccountImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   let me;
   try {
     me = await requireManager();
@@ -92,7 +92,7 @@ export async function createAccount(_prev: ActionState, formData: FormData): Pro
   return { ok: true, message: `Invite sent to ${email}. They set a password, then their authenticator.` };
 }
 
-export async function changeRole(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function changeRoleImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z.object({ user_id: z.string().uuid(), role_id: intId }).safeParse(Object.fromEntries(formData));
   if (!p.success) return { ok: false, error: "Choose a role." };
   const supabase = await createClient();
@@ -102,7 +102,7 @@ export async function changeRole(_prev: ActionState, formData: FormData): Promis
   return { ok: true, message: "Role updated." };
 }
 
-export async function setMemberActive(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function setMemberActiveImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z.object({ user_id: z.string().uuid(), active: z.enum(["true", "false"]) }).safeParse(Object.fromEntries(formData));
   if (!p.success) return { ok: false, error: "Invalid request." };
   const active = p.data.active === "true";
@@ -125,7 +125,7 @@ export async function setMemberActive(_prev: ActionState, formData: FormData): P
   return { ok: true, message: active ? "Reactivated. They can sign in again." : "Deactivated. Open sessions were ended." };
 }
 
-export async function resetAuthenticator(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function resetAuthenticatorImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z.object({ user_id: z.string().uuid() }).safeParse(Object.fromEntries(formData));
   if (!p.success) return { ok: false, error: "Invalid request." };
   let me;
@@ -152,7 +152,7 @@ export async function resetAuthenticator(_prev: ActionState, formData: FormData)
   return { ok: true, message: "Authenticator removed. They will set up a new one at next sign-in." };
 }
 
-export async function resendInvite(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function resendInviteImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z.object({ user_id: z.string().uuid() }).safeParse(Object.fromEntries(formData));
   if (!p.success) return { ok: false, error: "Invalid request." };
   let me;
@@ -173,3 +173,9 @@ export async function resendInvite(_prev: ActionState, formData: FormData): Prom
   await audit(me.id, "resend_invite", target.id, `Sign-in link re-sent to ${target.email}`);
   return { ok: true, message: `Sign-in link sent to ${target.email}.` };
 }
+
+export const createAccount = guarded("createAccount", createAccountImpl);
+export const changeRole = guarded("changeRole", changeRoleImpl);
+export const setMemberActive = guarded("setMemberActive", setMemberActiveImpl);
+export const resetAuthenticator = guarded("resetAuthenticator", resetAuthenticatorImpl);
+export const resendInvite = guarded("resendInvite", resendInviteImpl);
