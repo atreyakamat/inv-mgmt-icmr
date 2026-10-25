@@ -1,0 +1,100 @@
+name: CI
+
+# Blocks a broken change from landing: code checks, the database test suite,
+# and the whole offline stack exercised in a real browser.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  app:
+    name: Typecheck, lint, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci --no-audit --no-fund
+      - run: npx next typegen
+      - run: npm run typecheck
+      - run: npx eslint src --max-warnings=0
+      - name: Build
+        run: npm run build
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
+          NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-placeholder
+
+  database:
+    name: Database tests (RLS + workflow)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 3s --health-retries 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install psql
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client >/dev/null
+      - name: Run migrations and 77-check suite
+        env:
+          PGPASSWORD: ci
+          PSQL: psql -h localhost -U postgres
+        run: |
+          out=$(bash supabase/tests/run.sh)
+          echo "$out"
+          echo "$out" | grep -q "ALL TESTS PASSED"
+
+  offline-e2e:
+    name: Offline stack + browser run-through
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [app, database]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Start the stack
+        run: docker compose up -d --build --wait --wait-timeout 600
+      - name: Setup output
+        if: always()
+        run: docker compose logs setup
+      - name: Install test browser
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Health endpoint
+        run: curl -fsS http://localhost:3000/api/health
+      - name: Every role, end to end
+        run: npm run test:e2e
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+      - name: Screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-screenshots
+          path: tests/e2e/artifacts
+          retention-days: 7
+          if-no-files-found: ignore
+      - name: Stop
+        if: always()
+        run: docker compose down -v

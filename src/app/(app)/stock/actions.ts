@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
-import { friendlyError, intId, optStr, qty, str, type ActionState } from "@/lib/actions";
+import { friendlyError, intId, optStr, qty, str, type ActionState, guarded } from "@/lib/actions";
 
 function bump() {
   for (const p of ["/stock", "/inventory", "/", "/requests/new"]) revalidatePath(p);
 }
 
-export async function receiveStock(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function receiveStockImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z.object({ item_id: intId, location_id: intId, quantity: qty, note: optStr(500) }).safeParse(Object.fromEntries(formData));
   if (!p.success) return { ok: false, error: "Choose an item, a location and a quantity above 0." };
   const supabase = await createClient();
@@ -21,7 +21,7 @@ export async function receiveStock(_prev: ActionState, formData: FormData): Prom
   return { ok: true, message: `Received ${p.data.quantity}.` };
 }
 
-export async function adjustStock(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function adjustStockImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z
     .object({ item_id: intId, location_id: intId, delta: z.coerce.number().int().min(-1_000_000).max(1_000_000), note: str(500) })
     .safeParse(Object.fromEntries(formData));
@@ -36,7 +36,7 @@ export async function adjustStock(_prev: ActionState, formData: FormData): Promi
   return { ok: true, message: `Adjusted by ${p.data.delta > 0 ? "+" : ""}${p.data.delta}.` };
 }
 
-export async function transferStock(_prev: ActionState, formData: FormData): Promise<ActionState> {
+async function transferStockImpl(_prev: ActionState, formData: FormData): Promise<ActionState> {
   const p = z
     .object({ item_id: intId, from_location: intId, to_location: intId, quantity: qty, note: optStr(500) })
     .safeParse(Object.fromEntries(formData));
@@ -50,3 +50,7 @@ export async function transferStock(_prev: ActionState, formData: FormData): Pro
   bump();
   return { ok: true, message: `Moved ${p.data.quantity}.` };
 }
+
+export const receiveStock = guarded("receiveStock", receiveStockImpl);
+export const adjustStock = guarded("adjustStock", adjustStockImpl);
+export const transferStock = guarded("transferStock", transferStockImpl);

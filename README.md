@@ -34,8 +34,7 @@ row-level security as production; nothing points at the hosted project.
 
 ```bash
 git clone https://github.com/atreyakamat/inv-mgmt-icmr && cd inv-mgmt-icmr
-git checkout feat/offline-docker
-docker compose up --build        # first run: a few minutes
+docker compose up --build --wait   # first run: a few minutes; returns when healthy
 ```
 
 Needs Docker Desktop (Windows / macOS) or Docker Engine with Compose v2, and
@@ -65,7 +64,9 @@ as in production; their invite email lands in Mailpit. The seed adds 6
 categories, 4 locations, 32 items, six weeks of stock movements and 18 requests
 at every stage of the workflow, all with a real audit trail.
 
-- Start over with fresh data: `docker compose down -v && docker compose up`
+- Start over with fresh data: `docker compose down -v && docker compose up --wait`
+- Check it is healthy: `docker compose ps` (all `healthy`, `setup` exited 0) or
+  open http://localhost:3000/api/health
 - Behind a proxy that intercepts HTTPS (npm fails with `SELF_SIGNED_CERT_IN_CHAIN`),
   build the two images with your proxy's CA, then start without rebuilding:
   ```bash
@@ -77,6 +78,24 @@ at every stage of the workflow, all with a real audit trail.
   ```
 - All secrets in `docker-compose.yml` are throwaway local values. Never use
   them for a real deployment.
+
+## Checks
+
+Every pull request and every push to `main` runs, in GitHub Actions:
+
+| Job | What it proves |
+| --- | --- |
+| Typecheck, lint, build | the app compiles with zero lint warnings |
+| Database tests | 77 checks on RLS, roles, MFA gating and the request workflow |
+| Offline stack + browser | `docker compose up` from scratch, then every role signs in and does its part in a real browser; fails on any browser error |
+
+Run them locally:
+
+```bash
+npm run typecheck && npx eslint src --max-warnings=0
+npm run test:db                      # needs a scratch Postgres (see the script)
+docker compose up -d --build --wait && npm run test:e2e
+```
 
 ## Local development
 

@@ -99,6 +99,12 @@ services:
       - ./docker/gateway/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     ports:
       - "8000:8000"
+    healthcheck:
+      # Healthy only when both upstreams answer through the gateway.
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:8000/auth/v1/health >/dev/null && wget -qO- http://127.0.0.1:8000/rest/v1/ >/dev/null"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 
   mail:
     image: axllent/mailpit:v1.27
@@ -111,7 +117,7 @@ services:
     depends_on:
       db: { condition: service_healthy }
       auth: { condition: service_healthy }
-      rest: { condition: service_started }
+      gateway: { condition: service_healthy }
     environment:
       DATABASE_URL: postgres://postgres:offline-dev-postgres-password@db:5432/postgres
       # Superuser, used only to re-date seed history (bypasses append-only guards once).
@@ -144,6 +150,12 @@ services:
       APP_URL: http://localhost:3000
     ports:
       - "3000:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:3000/api/health"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 6
 
 volumes:
   db-data:

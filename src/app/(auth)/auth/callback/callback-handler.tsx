@@ -57,7 +57,6 @@ export function CallbackHandler() {
       }
       // Drop the tokens from the address bar before moving on.
       window.history.replaceState(null, "", "/auth/callback");
-      // eslint-disable-next-line @next/next/no-location-assign-relative-destination
       window.location.assign(target);
     })();
   }, [params]);
