@@ -6,6 +6,7 @@ import type { Me, PermissionKey } from "@/lib/database.types";
 
 export type AuthState =
   | { kind: "anonymous" }
+  | { kind: "misconfigured"; reason: string }
   | { kind: "no_profile"; email: string }
   | { kind: "mfa_enrol"; me: Me }
   | { kind: "mfa_verify"; me: Me }
@@ -21,7 +22,18 @@ export const getAuthState = cache(async (): Promise<AuthState> => {
   const { data: claims } = await supabase.auth.getClaims();
   if (!claims?.claims.sub) return { kind: "anonymous" };
 
-  const { data: me } = await supabase.rpc("me");
+  const { data: me, error } = await supabase.rpc("me");
+  if (error) {
+    // A missing profile returns null, not an error. An error here means the
+    // app cannot reach the inventory schema at all: fail loudly, never as "no access".
+    return {
+      kind: "misconfigured",
+      reason:
+        error.code === "PGRST106"
+          ? "The inventory schema is not exposed. In Supabase, open Project Settings → Data API → Exposed schemas, add inventory and save."
+          : `The database returned an error: ${error.message}`,
+    };
+  }
   if (!me) return { kind: "no_profile", email: String(claims.claims.email ?? "") };
   if (!me.active) return { kind: "inactive", me };
 
@@ -39,6 +51,7 @@ export function homeFor(state: AuthState): string {
     case "anonymous":
       return "/login";
     case "no_profile":
+    case "misconfigured":
       return "/no-access";
     case "inactive":
       return "/no-access";
