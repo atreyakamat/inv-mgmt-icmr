@@ -88,7 +88,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           <ol className="border-l border-rule pl-5">
             {events.map((e) => (
               <li key={e.id} className="relative pb-5 last:pb-0">
-                <span aria-hidden className={cx("absolute -left-[26px] top-1.5 size-2.5 rounded-full border-2 border-paper", statusMeta[e.to_status].tone.replace("text-", "bg-"))} />
+                <span aria-hidden className={cx("absolute -left-[26px] top-1.5 size-2.5 rounded-full border-2 border-paper", statusMeta[e.to_status].dot)} />
                 <div className="text-sm">
                   <span className="font-medium">{statusMeta[e.to_status].label}</span>
                   <span className="text-ink-3"> · {nameOf(people, e.actor_id) || "—"} · {formatDate(e.created_at, true)}</span>

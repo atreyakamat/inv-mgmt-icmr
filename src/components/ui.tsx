@@ -11,6 +11,7 @@ export function formatDate(iso: string | null | undefined, withTime = false) {
   if (!iso) return "";
   const d = new Date(iso);
   return d.toLocaleString("en-IN", {
+    timeZone: "Asia/Kolkata",
     day: "2-digit",
     month: "short",
     year: d.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
@@ -120,14 +121,14 @@ export function Notice({
 }
 
 /* --------------------------------------------------------------- stamps */
-export const statusMeta: Record<RequestStatus, { label: string; tone: string; soft: string }> = {
-  submitted: { label: "Submitted", tone: "text-ink-2", soft: "bg-sheet-tint" },
-  recommended: { label: "Recommended", tone: "text-stamp", soft: "bg-stamp-soft" },
-  not_recommended: { label: "Not recommended", tone: "text-warn", soft: "bg-warn-soft" },
-  approved: { label: "Approved", tone: "text-stamp", soft: "bg-stamp-soft" },
-  fulfilled: { label: "Handed over", tone: "text-ok", soft: "bg-ok-soft" },
-  rejected: { label: "Rejected", tone: "text-bad", soft: "bg-bad-soft" },
-  cancelled: { label: "Cancelled", tone: "text-ink-3", soft: "bg-sheet-tint" },
+export const statusMeta: Record<RequestStatus, { label: string; tone: string; soft: string; dot: string }> = {
+  submitted: { label: "Submitted", tone: "text-ink-2", soft: "bg-sheet-tint", dot: "bg-ink-3" },
+  recommended: { label: "Recommended", tone: "text-stamp", soft: "bg-stamp-soft", dot: "bg-stamp" },
+  not_recommended: { label: "Not recommended", tone: "text-warn", soft: "bg-warn-soft", dot: "bg-warn" },
+  approved: { label: "Approved", tone: "text-stamp", soft: "bg-stamp-soft", dot: "bg-stamp" },
+  fulfilled: { label: "Handed over", tone: "text-ok", soft: "bg-ok-soft", dot: "bg-ok" },
+  rejected: { label: "Rejected", tone: "text-bad", soft: "bg-bad-soft", dot: "bg-bad" },
+  cancelled: { label: "Cancelled", tone: "text-ink-3", soft: "bg-sheet-tint", dot: "bg-ink-3" },
 };
 
 export function Stamp({
@@ -161,7 +162,7 @@ export function StockLevelMark({ qty, reorder }: { qty: number; reorder: number 
   const tone = qty === 0 ? "text-bad" : reorder > 0 && qty <= reorder ? "text-warn" : "text-ok";
   const label = qty === 0 ? "Out" : reorder > 0 && qty <= reorder ? "Low" : "In stock";
   return (
-    <span className={cx("inline-flex items-center gap-1.5 text-xs font-medium", tone)}>
+    <span className={cx("inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium", tone)}>
       <span aria-hidden className="inline-block size-1.5 rounded-full bg-current" />
       {label}
     </span>

@@ -146,13 +146,14 @@ export type AuditEntry = {
 
 export type LowStock = {
   item_id: number;
-  location_id: number;
-  quantity: number;
-  reorder_level: number;
   item_name: string;
   sku: string | null;
   unit: string;
-  location_name: string;
+  reorder_level: number;
+  /** total across active locations */
+  quantity: number;
+  /** e.g. "Lab 1 2, Main store 3"; empty when none left anywhere */
+  held_at: string;
 };
 
 /** Shape returned by inventory.me() */

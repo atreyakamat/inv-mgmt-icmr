@@ -196,7 +196,7 @@ select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
 select inventory.fulfill_request(1, 'Handed over at counter');
 select pg_temp.check((select quantity from inventory.stock_levels where item_id = 1 and location_id = 1) = 4, 'issue reduced gloves 8 -> 4');
 select pg_temp.check((select quantity from inventory.stock_levels where item_id = 2 and location_id = 1) = 2, 'issue reduced tips 3 -> 2');
-select pg_temp.check((select count(*) from inventory.low_stock) = 3, 'low stock: gloves at both locations + tips');
+select pg_temp.check((select count(*) from inventory.low_stock) = 1 and (select item_name from inventory.low_stock) = 'Pipette tips 10ul', 'low stock judged on totals: only tips (2 <= 2); gloves 4+2 > 5');
 reset role;
 
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
