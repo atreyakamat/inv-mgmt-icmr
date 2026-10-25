@@ -1,0 +1,61 @@
+name: Nightly database backup
+
+# Dumps only the `inventory` schema, encrypts it with age (public key only
+# lives in CI; the private key never leaves the owner), and keeps the
+# encrypted file as a workflow artifact for 90 days.
+#
+# Setup (both as repository secrets, Settings -> Secrets and variables -> Actions):
+#   SUPABASE_DB_URL   Supabase dashboard -> Connect -> Session pooler URI, password filled in
+#   BACKUP_AGE_PUBLIC_KEY  the `age1...` public key from `age-keygen -o backup.key`
+#                          (keep backup.key offline; it is the only way to restore)
+#
+# Restore:
+#   age -d -i backup.key inventory-<stamp>.dump.age > inventory.dump
+#   pg_restore --schema=inventory --no-owner -d "$TARGET_DB_URL" inventory.dump
+on:
+  schedule:
+    - cron: '17 21 * * *'   # 02:47 IST daily
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check secrets
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          [ -n "$SUPABASE_DB_URL" ] || { echo "::error::SUPABASE_DB_URL secret is not set"; exit 1; }
+          [ -n "$BACKUP_AGE_PUBLIC_KEY" ] || { echo "::error::BACKUP_AGE_PUBLIC_KEY secret is not set"; exit 1; }
+
+      - name: Install PostgreSQL 17 client and age
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-common age >/dev/null
+          sudo /usr/share/postgresql-common/pgdg/apt.postgresql.org.sh -y >/dev/null
+          sudo apt-get install -y -qq postgresql-client-17 >/dev/null
+
+      - name: Dump and encrypt inventory schema
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+          BACKUP_AGE_PUBLIC_KEY: ${{ secrets.BACKUP_AGE_PUBLIC_KEY }}
+        run: |
+          set -euo pipefail
+          stamp=$(date -u +%Y%m%d-%H%M)
+          pg_dump "$SUPABASE_DB_URL" --schema=inventory --no-owner --no-privileges \
+            --format=custom --compress=9 \
+          | age -r "$BACKUP_AGE_PUBLIC_KEY" -o "inventory-$stamp.dump.age"
+          echo "encrypted backup: $(du -h "inventory-$stamp.dump.age" | cut -f1)"
+
+      - name: Keep encrypted dump
+        uses: actions/upload-artifact@v4
+        with:
+          name: inventory-db-${{ github.run_id }}
+          path: inventory-*.dump.age
+          retention-days: 90
+          if-no-files-found: error

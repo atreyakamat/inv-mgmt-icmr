@@ -1,0 +1,35 @@
+{
+  "name": "inv-mgmt-icmr",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit",
+    "test:db": "bash supabase/tests/run.sh",
+    "test:e2e": "node tests/e2e/flow.mjs"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.118.0",
+    "framer-motion": "^14.6.0",
+    "next": "16.4.3",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@netlify/plugin-nextjs": "^5.16.4",
+    "@tailwindcss/turbopack": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.3",
+    "playwright": "1.63.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}
