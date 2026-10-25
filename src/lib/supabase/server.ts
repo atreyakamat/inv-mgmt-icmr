@@ -2,6 +2,7 @@ import "server-only";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { DB_SCHEMA, env } from "@/lib/env";
+import { authCookieName, supabaseServerUrl } from "./config";
 import type { Database } from "@/lib/database.types";
 
 /**
@@ -12,10 +13,11 @@ export async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient<Database, typeof DB_SCHEMA>(
-    env.supabaseUrl,
+    supabaseServerUrl(),
     env.supabasePublishableKey,
     {
       db: { schema: DB_SCHEMA },
+      cookieOptions: { name: authCookieName },
       cookies: {
         getAll() {
           return cookieStore.getAll();

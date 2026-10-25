@@ -1,6 +1,7 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { DB_SCHEMA } from "@/lib/env";
+import { authCookieName, supabaseServerUrl } from "@/lib/supabase/config";
 
 /**
  * Refreshes the Supabase session cookie on every request and keeps signed-out
@@ -11,10 +12,11 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    supabaseServerUrl(),
     process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
     {
       db: { schema: DB_SCHEMA },
+      cookieOptions: { name: authCookieName },
       cookies: {
         getAll: () => request.cookies.getAll(),
         setAll(cookiesToSet) {
