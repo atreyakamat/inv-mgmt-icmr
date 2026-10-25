@@ -91,6 +91,7 @@ h1, h2, h3 {
   background: var(--stamp-soft);
 }
 
+@layer components {
 /* ---------------------------------------------------------------- register */
 /* The ruled-ledger look: rows separated by hairlines, no card chrome. */
 .register {
@@ -173,6 +174,8 @@ h1, h2, h3 {
 .field:focus { outline: none; border-color: var(--stamp); box-shadow: 0 0 0 3px var(--stamp-soft); }
 .field:disabled { background: var(--sheet-tint); color: var(--ink-3); }
 .field::placeholder { color: var(--ink-3); }
+
+}
 
 /* ---------------------------------------------------------------- graph bg */
 .grid-paper {

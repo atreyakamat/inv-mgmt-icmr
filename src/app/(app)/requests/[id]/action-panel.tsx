@@ -109,7 +109,7 @@ function ReviewForms({ requestId, onDone }: { requestId: number; onDone: () => v
         key={decision}
         action={reviewRequest}
         hidden={{ id: requestId, decision }}
-        submitLabel={decision === "recommend" ? "Recommend" : "Mark not recommended"}
+        submitLabel={decision === "recommend" ? "Send to approver as recommended" : "Send to approver as not recommended"}
         variant={decision === "recommend" ? "stamp" : "secondary"}
         onDone={(s) => s?.ok && onDone()}
       >

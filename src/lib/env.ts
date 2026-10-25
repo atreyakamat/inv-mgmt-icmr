@@ -1,5 +1,4 @@
-function required(name: string): string {
-  const value = process.env[name];
+function required(name: string, value = process.env[name]): string {
   if (!value) {
     throw new Error(`Missing environment variable ${name}. See .env.example.`);
   }
@@ -8,10 +7,11 @@ function required(name: string): string {
 
 export const env = {
   get supabaseUrl() {
-    return required("NEXT_PUBLIC_SUPABASE_URL");
+    // Literal references so Next.js inlines the values at build time.
+    return required("NEXT_PUBLIC_SUPABASE_URL", process.env.NEXT_PUBLIC_SUPABASE_URL);
   },
   get supabasePublishableKey() {
-    return required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY");
+    return required("NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY", process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY);
   },
   /** Server-only. Throws if read on the client. */
   get serviceRoleKey() {

@@ -25,7 +25,7 @@ export default async function OverviewPage() {
   const mine = requests.filter((r) => r.requester_id === me.id && !["fulfilled", "rejected", "cancelled"].includes(r.status));
   const queueHref = can(me, "requests.review") ? "/review" : can(me, "requests.approve") ? "/approve" : "/hand-over";
 
-  const hour = new Date().getHours();
+  const hour = Number(new Date().toLocaleString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", hourCycle: "h23" }));
   const greeting = hour < 12 ? "Good morning" : hour < 17 ? "Good afternoon" : "Good evening";
 
   return (
@@ -57,14 +57,14 @@ export default async function OverviewPage() {
               <Empty title="Nothing below its reorder level" />
             ) : (
               <table className="register text-sm">
-                <thead><tr><th>Item</th><th>Location</th><th className="r">Left</th><th className="r">Reorder at</th></tr></thead>
+                <thead><tr><th>Item</th><th className="r">Left in total</th><th className="r">Reorder at</th><th>Where</th></tr></thead>
                 <tbody>
                   {lowStock.slice(0, 8).map((r) => (
-                    <tr key={`${r.item_id}-${r.location_id}`}>
+                    <tr key={r.item_id}>
                       <td>{r.item_name}{r.sku && <span className="ml-2 text-ink-3">{r.sku}</span>}</td>
-                      <td className="text-ink-2">{r.location_name}</td>
                       <td className={`num r font-semibold ${r.quantity === 0 ? "text-bad" : "text-warn"}`}>{r.quantity} {r.unit}</td>
                       <td className="num r text-ink-3">{r.reorder_level}</td>
+                      <td className="max-w-[24ch] truncate text-ink-3">{r.held_at || "None left"}</td>
                     </tr>
                   ))}
                 </tbody>
