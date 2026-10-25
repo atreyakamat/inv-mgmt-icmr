@@ -119,6 +119,9 @@ services:
       SUPABASE_URL: http://gateway:8000
       SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1vZmZsaW5lIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc5MjgwMDAwMCwiZXhwIjoyMTA4MDAwMDAwfQ.872x2RflJPoMxMaVUMcdcCJIDhcQ25LGOJiboF_ee-8
       DEMO_PASSWORD: Inventory-Demo-2026
+      # One authenticator key shared by all demo accounts. Remove to make each
+      # demo account enrol its own on first sign-in.
+      DEMO_TOTP_SECRET: STOREREGISTERDEMOAUTHENTICATOR22
     volumes:
       - ./supabase/migrations:/migrations:ro
     restart: "no"
@@ -131,6 +134,7 @@ services:
         # Baked into the browser bundle: the address your browser uses.
         NEXT_PUBLIC_SUPABASE_URL: http://localhost:8000
         NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1vZmZsaW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI4MDAwMDAsImV4cCI6MjEwODAwMDAwMH0.NDiUS01C9axbockzT8bUf0XUytW4848W_bVKQJynhxc
+        NEXT_PUBLIC_DEMO_MODE: "true"    # sign-in page lists the demo accounts
     restart: unless-stopped
     depends_on:
       setup: { condition: service_completed_successfully }

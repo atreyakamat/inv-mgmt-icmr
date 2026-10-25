@@ -10,7 +10,7 @@ import { readdir, readFile } from "node:fs/promises";
 import pg from "pg";
 import { createClient } from "@supabase/supabase-js";
 
-const { DATABASE_URL, ADMIN_DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEMO_PASSWORD } = process.env;
+const { DATABASE_URL, ADMIN_DATABASE_URL, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, DEMO_PASSWORD, DEMO_TOTP_SECRET } = process.env;
 const MIGRATIONS = "/migrations";
 const DOMAIN = "inventory.local";
 
@@ -108,6 +108,19 @@ async function createAccounts() {
     [JSON.stringify(people.map((p) => ({ id: ids[p.key], email: p.email, name: p.name, role: p.role })))],
   );
   log(`created ${people.length} demo accounts`);
+
+  // Demo convenience: every demo account shares one authenticator key, so a
+  // single entry in your authenticator app signs in as any of them. Anyone
+  // invited through People still goes through the normal enrolment.
+  if (DEMO_TOTP_SECRET) {
+    await adminPool.query(
+      `insert into auth.mfa_factors (id, user_id, friendly_name, factor_type, status, secret, created_at, updated_at)
+       select gen_random_uuid(), u::uuid, 'Store register (demo)', 'totp', 'verified', $2, now(), now()
+       from unnest($1::text[]) as u`,
+      [Object.values(ids), DEMO_TOTP_SECRET],
+    );
+    log("demo accounts share one authenticator key (see README)");
+  }
   return ids;
 }
 
@@ -430,6 +443,7 @@ try {
   }
   log("done");
   log(`app:     http://localhost:3000   (password for every demo account: ${DEMO_PASSWORD})`);
+  if (DEMO_TOTP_SECRET) log(`2FA:     add key ${DEMO_TOTP_SECRET} to your authenticator app (or scan docker/demo-authenticator.png)`);
   log("emails:  http://localhost:8025");
   await pool.end();
   await adminPool.end();

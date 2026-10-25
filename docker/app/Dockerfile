@@ -11,13 +11,16 @@ FROM node:22-alpine AS build
 WORKDIR /app
 ARG NEXT_PUBLIC_SUPABASE_URL
 ARG NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+ARG NEXT_PUBLIC_DEMO_MODE=false
 ENV NEXT_PUBLIC_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL \
     NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=$NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY \
+    NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE \
     NEXT_OUTPUT=standalone \
     NEXT_TELEMETRY_DISABLED=1
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
-RUN npm run build
+# The demo QR is only shipped in demo builds.
+RUN if [ "$NEXT_PUBLIC_DEMO_MODE" = "true" ]; then cp docker/demo-authenticator.png public/; fi && npm run build
 
 FROM node:22-alpine AS run
 WORKDIR /app

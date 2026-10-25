@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { LoginForm } from "./login-form";
+import { DemoAccounts } from "./demo-accounts";
 
 export const metadata: Metadata = { title: "Sign in" };
 
@@ -13,6 +14,7 @@ export default async function LoginPage({ searchParams }: PageProps<"/login">) {
       <div className="mt-8">
         <LoginForm next={next} />
       </div>
+      {process.env.NEXT_PUBLIC_DEMO_MODE === "true" && <DemoAccounts />}
     </>
   );
 }
