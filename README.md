@@ -33,8 +33,13 @@ codes), the Data API, a mail catcher and the app. The same migrations and
 row-level security as production; nothing points at the hosted project.
 
 ```bash
+git clone https://github.com/atreyakamat/inv-mgmt-icmr && cd inv-mgmt-icmr
+git checkout feat/offline-docker
 docker compose up --build        # first run: a few minutes
 ```
+
+Needs Docker Desktop (Windows / macOS) or Docker Engine with Compose v2, and
+ports 3000, 8000, 8025 and 54322 free. Stop with `Ctrl+C` or `docker compose down`.
 
 | Open                    | What                                             |
 | ----------------------- | ------------------------------------------------ |
@@ -52,8 +57,11 @@ Demo accounts, all with password `Inventory-Demo-2026`:
 | store@inventory.local         | Store Manager |
 | anil@ / sneha@ / kevin@inventory.local | User |
 
-Each account sets up its authenticator on first sign-in (scan the QR with
-Google Authenticator, or click "Can't scan? Show the key"). The seed adds 6
+Two-factor: all demo accounts share **one** authenticator entry. Scan
+`docker/demo-authenticator.png` once in Google Authenticator (it is also shown on
+the sign-in page), or add the key `STOREREGISTERDEMOAUTHENTICATOR22` by hand.
+People you invite from the People page enrol their own authenticator, exactly
+as in production; their invite email lands in Mailpit. The seed adds 6
 categories, 4 locations, 32 items, six weeks of stock movements and 18 requests
 at every stage of the workflow, all with a real audit trail.
 

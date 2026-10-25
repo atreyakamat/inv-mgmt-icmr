@@ -45,8 +45,8 @@ export function DemoAccounts() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/demo-authenticator.png" alt="QR code for the demo authenticator" width={96} height={96} className="rounded-sm border border-rule bg-white" />
         <p className="text-ink-2">
-          Every demo account uses one authenticator entry. Scan this once in Google Authenticator, or type the key{" "}
-          <code className="select-all break-all rounded-sm bg-sheet-tint px-1 font-mono text-xs text-ink">{DEMO_KEY}</code>.
+          Every demo account uses one authenticator entry. Scan this once in Google Authenticator, or type the key:
+          <code className="mt-1.5 block select-all rounded-sm bg-sheet-tint px-2 py-1 font-mono text-xs text-ink">{DEMO_KEY}</code>
         </p>
       </div>
     </aside>
