@@ -1,0 +1,7 @@
+node_modules
+.next
+.git
+.netlify
+.env*
+!.env.example
+docker/setup/node_modules

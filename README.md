@@ -26,6 +26,50 @@ database (RLS + security-definer functions), not only in the UI.
 Every member must complete authenticator-app MFA; without it the database
 returns nothing except their own profile row.
 
+## Run it offline (Docker)
+
+Everything runs on your machine: Postgres, Supabase Auth (with authenticator
+codes), the Data API, a mail catcher and the app. The same migrations and
+row-level security as production; nothing points at the hosted project.
+
+```bash
+docker compose up --build        # first run: a few minutes
+```
+
+| Open                    | What                                             |
+| ----------------------- | ------------------------------------------------ |
+| http://localhost:3000   | the app                                          |
+| http://localhost:8025   | Mailpit: invite and password-reset emails land here |
+| localhost:54322         | Postgres (`postgres` / `offline-dev-postgres-password`) |
+
+Demo accounts, all with password `Inventory-Demo-2026`:
+
+| Email                         | Role          |
+| ----------------------------- | ------------- |
+| admin@inventory.local         | Admin (hidden)|
+| super@inventory.local         | Super User    |
+| validator@inventory.local     | Validator     |
+| store@inventory.local         | Store Manager |
+| anil@ / sneha@ / kevin@inventory.local | User |
+
+Each account sets up its authenticator on first sign-in (scan the QR with
+Google Authenticator, or click "Can't scan? Show the key"). The seed adds 6
+categories, 4 locations, 32 items, six weeks of stock movements and 18 requests
+at every stage of the workflow, all with a real audit trail.
+
+- Start over with fresh data: `docker compose down -v && docker compose up`
+- Behind a proxy that intercepts HTTPS (npm fails with `SELF_SIGNED_CERT_IN_CHAIN`),
+  build the two images with your proxy's CA, then start without rebuilding:
+  ```bash
+  docker build --secret id=npm_ca,src=ca.pem -t inv-mgmt-offline-setup docker/setup
+  docker build --secret id=npm_ca,src=ca.pem -f docker/app/Dockerfile -t inv-mgmt-offline-app \
+    --build-arg NEXT_PUBLIC_SUPABASE_URL=http://localhost:8000 \
+    --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=<ANON key from docker-compose.yml> .
+  docker compose up --no-build
+  ```
+- All secrets in `docker-compose.yml` are throwaway local values. Never use
+  them for a real deployment.
+
 ## Local development
 
 ```bash
