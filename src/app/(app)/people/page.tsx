@@ -26,8 +26,8 @@ export default async function PeoplePage() {
         lead="Accounts are created here, never by sign-up. New people get an email link, set a password, then set up their authenticator."
       />
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div>
+      <div className="grid gap-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="min-w-0">
           {profiles.length === 0 ? (
             <Empty title="No members yet" />
           ) : (
@@ -68,7 +68,7 @@ export default async function PeoplePage() {
           )}
         </div>
 
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="xl:sticky xl:top-8 xl:self-start">
           <CreateAccountForm roles={assignable.filter((r) => !r.is_locked || r.key === "super_user").map((r) => ({ id: r.id, name: r.name, description: r.description }))} />
         </div>
       </div>

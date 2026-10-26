@@ -42,8 +42,8 @@ export default async function OverviewPage() {
         actions={can(me, "requests.submit") && <LinkButton href="/requests/new" variant="primary">New request</LinkButton>}
       />
 
-      <div className="grid gap-x-12 lg:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
-        <div>
+      <div className="grid gap-x-12 xl:grid-cols-[minmax(0,2fr)_minmax(0,3fr)]">
+        <div className="min-w-0 overflow-x-auto">
           {waitingOnMe.length > 0 && (
             <Link href={queueHref} className="block hover:bg-sheet-tint">
               <Figure value={waitingOnMe.length} label={waitingOnMe.length === 1 ? "request waiting on you" : "requests waiting on you"} tone="text-stamp" />

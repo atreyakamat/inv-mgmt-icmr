@@ -152,11 +152,31 @@ select pg_temp.expect_error($$select inventory.adjust_stock(1, 2, -1, '  ')$$, '
 select pg_temp.expect_error($$update inventory.stock_movements set quantity = 99$$, 'permission denied');
 select pg_temp.expect_error($$insert into inventory.stock_levels values (1, 1, 1000)$$, 'permission denied');
 select pg_temp.check((select count(*) from inventory.audit_log) = 0, 'store manager cannot read audit log');
+
+-- Whole delivery in one call, including a brand-new catalog item
+select pg_temp.check(inventory.receive_delivery(1, 'Invoice 4411 - Goa Scientific',
+  jsonb_build_array(
+    jsonb_build_object('item_id', 2, 'quantity', 4),
+    jsonb_build_object('new_item', jsonb_build_object('name', 'Parafilm roll', 'category_id', 1, 'unit', 'roll', 'reorder_level', 1), 'quantity', 3)
+  )) is not null, 'store manager receives a delivery with a new item');
+select pg_temp.check((select quantity from inventory.stock_levels sl join inventory.items i on i.id = sl.item_id where i.name = 'Parafilm roll') = 3, 'new item stocked');
+select pg_temp.check((select count(distinct batch_id) from inventory.stock_movements where note = 'Invoice 4411 - Goa Scientific') = 1, 'delivery lines share one batch');
+select pg_temp.expect_error($$select inventory.receive_delivery(1, 'x', '[{"new_item": {"name": "parafilm ROLL", "category_id": 1}, "quantity": 1}]')$$, 'already in the catalog');
+select pg_temp.expect_error($$select inventory.receive_delivery(1, 'x', '[{"item_id": 2, "quantity": 2}, {"item_id": 2, "quantity": 0}]')$$, 'Line 2');
+select pg_temp.check((select quantity from inventory.stock_levels where item_id = 2 and location_id = 1) = 7, 'failed delivery saved nothing (tips still 3 + 4)');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
+select pg_temp.expect_error($$select inventory.receive_delivery(1, 'x', '[{"item_id": 2, "quantity": 1}]')$$, 'permission');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+-- put stock back where the rest of the suite expects it
+update inventory.items set active = false where name = 'Parafilm roll';
+select inventory.adjust_stock(2, 1, -4, 'test reset');
 reset role;
 
 -- User sees stock but not movement history
 select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
-select pg_temp.check((select count(*) from inventory.stock_levels) = 3, 'user sees stock levels');
+select pg_temp.check((select count(*) from inventory.stock_levels sl join inventory.items i on i.id = sl.item_id where i.active) = 3, 'user sees stock levels');
 select pg_temp.check((select count(*) from inventory.stock_movements) = 0, 'user cannot see movement history');
 
 -- Happy path: submit -> recommend -> approve with modification -> fulfil
