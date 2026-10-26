@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { can, requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
-import { getCatalog, getPeopleIndex, getRequests, nameOf } from "@/lib/queries";
+import { getCatalog, getPeopleIndex, getRequests, getStockLevels, nameOf } from "@/lib/queries";
+import { getMyItems } from "@/lib/my-items";
 import type { LowStock } from "@/lib/database.types";
 import { Empty, Figure, LinkButton, PageHeader, Section, StatusPill, formatDate } from "@/components/ui";
 
@@ -9,12 +10,17 @@ export default async function OverviewPage() {
   const me = await requireMember();
   const supabase = await createClient();
 
-  const [{ items, locations }, low, requests, people] = await Promise.all([
+  const [{ items, locations }, low, requests, people, levels, received] = await Promise.all([
     getCatalog(),
     supabase.from("low_stock").select("*").order("quantity"),
     getRequests(),
     getPeopleIndex(),
+    getStockLevels(),
+    can(me, "requests.submit") ? getMyItems(me.id) : Promise.resolve(null),
   ]);
+  const totals = new Map<number, number>();
+  for (const l of levels) totals.set(l.item_id, (totals.get(l.item_id) ?? 0) + l.quantity);
+  const outOfStock = items.filter((i) => i.active && (totals.get(i.id) ?? 0) === 0).length;
   const lowStock = (low.data ?? []) as LowStock[];
 
   const waitingOnMe = requests.filter((r) =>
@@ -46,9 +52,22 @@ export default async function OverviewPage() {
           <Link href="/inventory?filter=low" className="block hover:bg-sheet-tint">
             <Figure value={lowStock.length} label="below reorder level" tone={lowStock.length ? "text-warn" : undefined} />
           </Link>
-          <Link href="/requests" className="block hover:bg-sheet-tint">
-            <Figure value={mine.length} label="of your requests in progress" />
+          <Link href="/inventory?filter=out" className="block hover:bg-sheet-tint">
+            <Figure value={outOfStock} label="out of stock" tone={outOfStock ? "text-bad" : undefined} />
           </Link>
+          {received && (
+            <>
+              <Link href="/requests" className="block hover:bg-sheet-tint">
+                <Figure value={mine.length} label="of your requests in progress" />
+              </Link>
+              <Link href="/my-items" className="block hover:bg-sheet-tint">
+                <Figure
+                  value={received.units}
+                  label={received.units === 0 ? "items handed to you so far" : `units handed to you: ${received.distinctItems} items, ${received.categories.length} ${received.categories.length === 1 ? "category" : "categories"}`}
+                />
+              </Link>
+            </>
+          )}
         </div>
 
         <div>

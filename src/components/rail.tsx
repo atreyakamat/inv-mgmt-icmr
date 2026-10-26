@@ -15,6 +15,7 @@ const groups: { title?: string; items: NavItem[] }[] = [
       { href: "/", label: "Overview" },
       { href: "/inventory", label: "Inventory" },
       { href: "/requests", label: "Requests" },
+      { href: "/my-items", label: "My items", needs: ["requests.submit"] },
     ],
   },
   {

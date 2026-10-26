@@ -173,8 +173,14 @@ const step = (msg) => console.log('✓', msg);
   await shot(anil.page, '12-request-submitted');
   step('user submitted a request');
   const navText = await anil.page.locator('nav[aria-label=Main]').innerText();
-  if (/Approve|People|Catalog|Audit/.test(navText)) throw new Error('user nav shows privileged items: ' + navText);
-  step('user nav shows only Overview / Inventory / Requests');
+  if (/Approve|People|Catalog|Audit|Review|Hand over/.test(navText) || !/My items/.test(navText)) throw new Error('user nav shows privileged items: ' + navText);
+  step('user nav shows only their own sections');
+  await anil.page.goto(BASE + '/my-items');
+  await anil.page.waitForSelector('text=units of');
+  const myRows = await anil.page.locator('table.register tbody tr').count();
+  if (myRows === 0) throw new Error('My items shows no rows for a user with handed-over requests');
+  await shot(anil.page, '12b-my-items', { fullPage: true });
+  step(`user sees what the store handed them (${myRows} items)`);
   const peopleNames = await anil.page.goto(BASE + '/requests').then(() => anil.page.content());
   if (peopleNames.includes('Atreya Kamat')) throw new Error('user sees admin name somewhere on requests');
 
