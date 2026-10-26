@@ -86,7 +86,7 @@ Every pull request and every push to `main` runs, in GitHub Actions:
 | Job | What it proves |
 | --- | --- |
 | Typecheck, lint, build | the app compiles with zero lint warnings |
-| Database tests | 77 checks on RLS, roles, MFA gating and the request workflow |
+| Database tests | 87 checks on RLS, roles, MFA gating and the request workflow |
 | Offline stack + browser | `docker compose up` from scratch, then every role signs in and does its part in a real browser; fails on any browser error |
 
 Run them locally:
