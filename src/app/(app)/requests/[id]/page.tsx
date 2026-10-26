@@ -53,8 +53,8 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
         actions={<Stamp status={req.status} size="lg" animate={justChanged} />}
       />
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div>
+      <div className="grid gap-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="min-w-0 overflow-x-auto">
           <h2 className="mb-2 text-lg font-semibold">Items</h2>
           <table className="register text-sm">
             <thead>
@@ -99,7 +99,7 @@ export default async function RequestPage({ params, searchParams }: PageProps<"/
           </ol>
         </div>
 
-        <aside className="lg:sticky lg:top-8 lg:self-start">
+        <aside className="xl:sticky xl:top-8 xl:self-start">
           {stage ? (
             <ActionPanel
               stage={stage}

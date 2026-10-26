@@ -47,8 +47,8 @@ export default async function CatalogPage({ searchParams }: PageProps<"/catalog"
         </Link>
       </div>
 
-      <div className="grid gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <div>
+      <div className="grid gap-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+        <div className="min-w-0 overflow-x-auto">
           {rows.length === 0 ? (
             <Empty title={`No ${tab} yet`}>
               {tab === "items" && categories.filter((c) => c.active).length === 0
@@ -94,7 +94,7 @@ export default async function CatalogPage({ searchParams }: PageProps<"/catalog"
           )}
         </div>
 
-        <div className="lg:sticky lg:top-8 lg:self-start">
+        <div className="xl:sticky xl:top-8 xl:self-start">
           <EntryForm
             key={`${tab}-${editing?.id ?? "new"}`}
             kind={tab}

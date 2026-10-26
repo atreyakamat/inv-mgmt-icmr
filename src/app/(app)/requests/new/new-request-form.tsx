@@ -33,9 +33,9 @@ export function NewRequestForm({
   }
 
   return (
-    <form action={action} className="grid gap-10 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
+    <form action={action} className="grid gap-10 xl:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
       {/* Picker */}
-      <div>
+      <div className="min-w-0 overflow-x-auto">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
@@ -80,7 +80,7 @@ export function NewRequestForm({
       </div>
 
       {/* Summary + details */}
-      <div className="space-y-5 lg:sticky lg:top-8 lg:self-start">
+      <div className="space-y-5 xl:sticky xl:top-8 xl:self-start">
         <div>
           <h2 className="mb-2 text-lg font-semibold">Your request</h2>
           {chosen.length === 0 ? (

@@ -15,6 +15,7 @@ const groups: { title?: string; items: NavItem[] }[] = [
       { href: "/", label: "Overview" },
       { href: "/inventory", label: "Inventory" },
       { href: "/requests", label: "Requests" },
+      { href: "/my-items", label: "My items", needs: ["requests.submit"] },
     ],
   },
   {
@@ -28,6 +29,8 @@ const groups: { title?: string; items: NavItem[] }[] = [
   {
     title: "Store",
     items: [
+      { href: "/stock/receive", label: "Receive stock", needs: ["stock.write"] },
+      { href: "/stock/adjust", label: "Correct or move", needs: ["stock.write"] },
       { href: "/stock", label: "Stock movements", needs: ["stock.write", "stock.read_history"] },
       { href: "/catalog", label: "Catalog", needs: ["catalog.write"] },
     ],
@@ -53,6 +56,12 @@ export function Rail({ me }: { me: Me }) {
     }))
     .filter((g) => g.items.length > 0);
 
+  // The most specific matching link is the active one (/stock/receive beats /stock).
+  const activeHref = visible
+    .flatMap((g) => g.items.map((i) => i.href))
+    .filter((h) => (h === "/" ? pathname === "/" : pathname === h || pathname.startsWith(h + "/")))
+    .sort((a, b) => b.length - a.length)[0];
+
   const nav = (
     <nav aria-label="Main" className="flex flex-1 flex-col gap-6">
       {visible.map((g, gi) => (
@@ -60,7 +69,7 @@ export function Rail({ me }: { me: Me }) {
           {g.title && <div className="compact mb-1.5 px-3 text-xs text-ink-3">{g.title}</div>}
           <ul className="space-y-0.5">
             {g.items.map((item) => {
-              const active = item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+              const active = item.href === activeHref;
               return (
                 <li key={item.href}>
                   <Link

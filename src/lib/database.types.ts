@@ -119,6 +119,7 @@ export type StockMovement = {
   quantity: number;
   request_id: number | null;
   transfer_group: string | null;
+  batch_id: string | null;
   note: string | null;
   created_by: string | null;
   created_at: string;
@@ -219,6 +220,17 @@ export type Database = {
       fulfill_request: Fn<{ p_id: number; p_note: string | null }, undefined>;
       receive_stock: Fn<{ p_item_id: number; p_location_id: number; p_quantity: number; p_note: string | null }, undefined>;
       adjust_stock: Fn<{ p_item_id: number; p_location_id: number; p_delta: number; p_note: string }, undefined>;
+      receive_delivery: Fn<
+        {
+          p_location_id: number;
+          p_reference: string | null;
+          p_lines: Array<
+            | { item_id: number; quantity: number }
+            | { new_item: { name: string; category_id: number; unit: string; sku: string | null; reorder_level: number }; quantity: number }
+          >;
+        },
+        string
+      >;
       transfer_stock: Fn<
         { p_item_id: number; p_from_location: number; p_to_location: number; p_quantity: number; p_note: string | null },
         undefined
