@@ -277,6 +277,23 @@ reset role;
 update auth.users set email = 'Super.New@co.test' where id = '00000000-0000-0000-0000-00000000000b';
 select pg_temp.check((select email from inventory.profiles where id = '00000000-0000-0000-0000-00000000000b') = 'super.new@co.test', 'profile email follows auth email');
 
+-- The API schema exposes exactly the workflow functions; access-check helpers live elsewhere
+select pg_temp.check(
+  (select array_agg(p.proname::text order by p.proname)
+     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'inventory' and has_function_privilege('authenticated', p.oid, 'execute'))
+  = array['adjust_stock','approve_request','cancel_request','create_role','delete_role','fulfill_request',
+          'me','receive_delivery','receive_stock','reject_request','review_request','set_member_active',
+          'set_member_role','submit_request','transfer_stock','update_my_name','update_role'],
+  'API schema exposes only the workflow functions');
+select pg_temp.check(not exists (
+  select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'inventory' and p.proname in ('current_member','is_member','has_permission','role_is_hidden','my_permissions')),
+  'access-check helpers are not in the API schema');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000e');
+select pg_temp.expect_error($$select inventory.has_permission('users.manage')$$, 'does not exist');
+reset role;
+
 -- anon has nothing
 set role anon;
 select pg_temp.expect_error($$select * from inventory.items$$, 'permission denied');

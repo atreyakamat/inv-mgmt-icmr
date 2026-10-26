@@ -199,7 +199,6 @@ export type Database = {
     };
     Functions: {
       me: Fn<Record<string, never>, Me | null>;
-      my_permissions: Fn<Record<string, never>, PermissionKey[]>;
       update_my_name: Fn<{ p_full_name: string }, undefined>;
       set_member_role: Fn<{ p_user_id: string; p_role_id: number }, undefined>;
       set_member_active: Fn<{ p_user_id: string; p_active: boolean }, undefined>;
