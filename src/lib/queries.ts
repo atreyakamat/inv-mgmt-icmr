@@ -1,6 +1,6 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import type { Category, Item, Location, Profile, RequestRow, Role, StockLevel } from "@/lib/database.types";
+import type { Category, DirectoryEntry, Item, Location, RequestRow, Role, StockLevel } from "@/lib/database.types";
 
 export async function getCatalog() {
   const supabase = await createClient();
@@ -22,10 +22,22 @@ export async function getStockLevels() {
   return (data ?? []) as StockLevel[];
 }
 
+/**
+ * Names for everyday screens. Comes from inventory.directory(), which shows a
+ * hidden role as the ordinary "User" role to anyone who cannot manage accounts.
+ */
 export async function getPeopleIndex() {
   const supabase = await createClient();
-  const { data } = await supabase.from("profiles").select("id, full_name, email, role_id, active");
-  const map = new Map<string, Pick<Profile, "id" | "full_name" | "email" | "role_id" | "active">>();
+  const map = new Map<string, DirectoryEntry>();
+  const { data, error } = await supabase.rpc("directory");
+  if (error) {
+    // Database not yet updated with the directory: fall back to the profile
+    // rows this member may read (hidden-role holders are not among them).
+    console.error("[getPeopleIndex] directory unavailable:", error.message);
+    const { data: rows } = await supabase.from("profiles").select("id, full_name, email, active");
+    for (const p of rows ?? []) map.set(p.id, { ...p, role_name: "" });
+    return map;
+  }
   for (const p of data ?? []) map.set(p.id, p);
   return map;
 }

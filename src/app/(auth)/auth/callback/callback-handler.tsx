@@ -67,7 +67,7 @@ export function CallbackHandler() {
       <h1 className="text-3xl font-semibold">This link did not work</h1>
       <div className="mt-4"><Notice tone="bad">{error}</Notice></div>
       <p className="mt-4 text-sm text-ink-2">
-        Links work once and expire after an hour. Ask your admin to resend it, or{" "}
+        Links work once and expire after an hour. Ask the Super User to resend it, or{" "}
         <Link href="/auth/forgot" className="underline underline-offset-2">request a new reset link</Link>.
       </p>
     </>

@@ -2,9 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Me, PermissionKey } from "@/lib/database.types";
 import { SignOutButton } from "./sign-out-button";
+import { RAIL_OPEN } from "./tour-events";
 import { cx } from "./ui";
 
 type NavItem = { href: string; label: string; needs?: PermissionKey[] };
@@ -49,6 +50,13 @@ export function Rail({ me }: { me: Me }) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  // The tour opens the drawer on phones while it points at menu items.
+  useEffect(() => {
+    const onRail = (e: Event) => setOpen(Boolean((e as CustomEvent<boolean>).detail));
+    window.addEventListener(RAIL_OPEN, onRail);
+    return () => window.removeEventListener(RAIL_OPEN, onRail);
+  }, []);
+
   const visible = groups
     .map((g) => ({
       ...g,
@@ -76,6 +84,7 @@ export function Rail({ me }: { me: Me }) {
                     href={item.href}
                     onClick={() => setOpen(false)}
                     aria-current={active ? "page" : undefined}
+                    data-tour={`nav:${item.href}`}
                     className={cx(
                       "flex items-center gap-2 rounded-sm px-3 py-1.5 text-[15px] transition",
                       active ? "bg-ink text-paper" : "text-ink-2 hover:bg-sheet-tint hover:text-ink",
@@ -98,6 +107,19 @@ export function Rail({ me }: { me: Me }) {
 
   const account = (
     <div className="border-t border-rule pt-4">
+      <Link
+        href="/guide"
+        onClick={() => setOpen(false)}
+        data-tour="nav:/guide"
+        aria-current={pathname === "/guide" ? "page" : undefined}
+        className={cx(
+          "mb-2 flex items-center gap-2 rounded-sm px-3 py-1.5 text-sm",
+          pathname === "/guide" ? "bg-ink text-paper" : "text-ink-2 hover:bg-sheet-tint hover:text-ink",
+        )}
+      >
+        <span aria-hidden className="grid size-4 place-items-center rounded-full border border-current text-[10px] font-semibold leading-none">?</span>
+        Guide
+      </Link>
       <Link href="/account" className="block rounded-sm px-3 py-1.5 hover:bg-sheet-tint">
         <div className="truncate text-sm font-medium">{me.full_name}</div>
         <div className="truncate text-xs text-ink-3">{me.role.name}</div>

@@ -135,7 +135,7 @@ export type StockLevel = {
 export type AuditEntry = {
   id: number;
   actor_id: string | null;
-  actor_kind: "member" | "server" | "system";
+  actor_kind: "member" | "server" | "system" | "database";
   action: string;
   table_name: string | null;
   row_id: string | null;
@@ -143,7 +143,21 @@ export type AuditEntry = {
   new_data: Record<string, unknown> | null;
   note: string | null;
   created_at: string;
+  /** database login, only for changes made outside the app */
+  db_user: string | null;
+  /** position in the sealed chain */
+  seq: number;
+  /** seal of this entry (bytea as "\\x…" hex) */
+  hash: string;
 };
+
+/** Shape returned by inventory.verify_audit_log() */
+export type SealCheck =
+  | { ok: true; checked: number; hash: string; checked_at: string }
+  | { ok: false; checked: number; at: number; problem: string };
+
+/** Row of inventory.directory(): hidden roles are shown as "User" to non-managers */
+export type DirectoryEntry = { id: string; full_name: string; email: string; role_name: string; active: boolean };
 
 export type LowStock = {
   item_id: number;
@@ -166,6 +180,8 @@ export type Me = {
   role: { id: number; key: string; name: string; hidden: boolean };
   mfa_verified: boolean;
   permissions: PermissionKey[];
+  /** last guide tour this member finished or dismissed */
+  tour_version: number;
 };
 
 type Table<Row, Insert = Partial<Row>, Update = Partial<Row>> = {
@@ -199,6 +215,10 @@ export type Database = {
     };
     Functions: {
       me: Fn<Record<string, never>, Me | null>;
+      directory: Fn<Record<string, never>, DirectoryEntry[]>;
+      verify_audit_log: Fn<Record<string, never>, SealCheck>;
+      record_auth_event: Fn<{ p_event: "sign_in" | "sign_out" | "code_failed" | "password_set"; p_device?: string | null; p_ip?: string | null }, undefined>;
+      set_tour_version: Fn<{ p_version: number }, undefined>;
       update_my_name: Fn<{ p_full_name: string }, undefined>;
       set_member_role: Fn<{ p_user_id: string; p_role_id: number }, undefined>;
       set_member_active: Fn<{ p_user_id: string; p_active: boolean }, undefined>;

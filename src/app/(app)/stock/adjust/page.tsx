@@ -16,6 +16,7 @@ export default async function AdjustPage() {
     <>
       <PageHeader
         title="Correct or move stock"
+        help="correct"
         lead="For anything that is not a delivery or a hand-over: count corrections, damage, loss, and moving stock between locations. Every change is kept in the ledger with your reason."
         actions={<LinkButton href="/stock">Stock movements</LinkButton>}
       />
