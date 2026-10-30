@@ -33,6 +33,7 @@ export default async function CatalogPage({ searchParams }: PageProps<"/catalog"
     <>
       <PageHeader
         title="Catalog"
+        help="catalog"
         lead="What the store stocks and where. Nothing is deleted here; retired entries keep their history."
       />
 

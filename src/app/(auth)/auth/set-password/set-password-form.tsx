@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { recordAuthEvent } from "@/lib/auth-events";
 import { Button, Field, Input, Notice } from "@/components/ui";
 
 export function SetPasswordForm() {
@@ -24,6 +25,7 @@ export function SetPasswordForm() {
       setError(error.message);
       return;
     }
+    await recordAuthEvent("password_set");
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/");
   }

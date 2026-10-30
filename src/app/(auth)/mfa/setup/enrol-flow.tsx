@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { recordAuthEvent } from "@/lib/auth-events";
 import { Button, Notice } from "@/components/ui";
 import { CodeInput } from "@/components/code-input";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -43,11 +44,13 @@ export function EnrolFlow({ email }: { email: string }) {
     const supabase = createClient();
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: enrolment.factorId, code });
     if (error) {
+      void recordAuthEvent("code_failed");
       setPending(false);
       setAttempt((a) => a + 1);
       setError("That code did not match. Wait for the next code and try again.");
       return;
     }
+    await recordAuthEvent("sign_in");
     // Full navigation so the server sees the upgraded (aal2) session cookie.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/");

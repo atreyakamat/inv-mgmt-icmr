@@ -39,7 +39,7 @@ export default async function InventoryPage({ searchParams }: PageProps<"/invent
 
   return (
     <>
-      <PageHeader title="Inventory" lead="What is in each location right now. Totals come from the stock ledger." />
+      <PageHeader title="Inventory" lead="What is in each location right now. Totals come from the stock ledger." help="inventory" />
 
       <form className="mb-5 flex flex-wrap items-end gap-3" role="search">
         <input name="q" defaultValue={q} placeholder="Search items or codes" className="field w-64" aria-label="Search items" />

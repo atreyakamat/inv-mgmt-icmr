@@ -57,7 +57,33 @@ async function signIn(browser, who, opts = {}) {
     await page.locator('input[name=code]').fill(totp(secrets[who]));
   }
   await page.waitForURL(BASE + '/', { timeout: 15000 });
+  await handleTour(page, who, opts.tour ?? 'skip');
   return { ctx, page };
+}
+
+// First sign-in shows the guided tour; later sign-ins must not.
+async function handleTour(page, who, mode) {
+  const tour = page.locator('[data-testid=tour]');
+  const shown = await tour.waitFor({ timeout: 4000 }).then(() => true, () => false);
+  if (mode === 'none') {
+    if (shown) throw new Error(`${who}: tour shown again after it was finished`);
+    return;
+  }
+  if (!shown) throw new Error(`${who}: tour did not start on first sign-in`);
+  if (mode === 'skip') {
+    await tour.locator('button:has-text("Skip tour")').click();
+    await tour.waitFor({ state: 'detached' });
+    return;
+  }
+  // walk through every step
+  const total = Number((await tour.locator('text=/\\d+ of \\d+/').innerText()).split(' of ')[1]);
+  for (let i = 1; i <= total; i++) {
+    await tour.locator(`text=${i} of ${total}`).waitFor();
+    if (i === 1 || i === 3 || i === total) { await page.waitForTimeout(450); await shot(page, `tour-${who}-${i}`); }
+    await tour.locator(`button:has-text("${i === 1 ? 'Start' : i === total ? 'Finish' : 'Next'}")`).click();
+  }
+  await tour.waitFor({ state: 'detached' });
+  return total;
 }
 
 const step = (msg) => console.log('✓', msg);
@@ -82,8 +108,8 @@ const step = (msg) => console.log('✓', msg);
   }
 
   // ---------------- store manager
-  const store = await signIn(browser, 'store', { shotVerify: true });
-  step('store manager signed in with the shared demo authenticator');
+  const store = await signIn(browser, 'store', { shotVerify: true, tour: 'walk' });
+  step('store manager signed in and walked through the role tour');
   await shot(store.page, '02-overview-store');
   await store.page.goto(BASE + '/inventory');
   await shot(store.page, '03-inventory', { fullPage: true });
@@ -183,6 +209,27 @@ const step = (msg) => console.log('✓', msg);
   await sup.page.goto(BASE + '/people');
   const supSeesAdmin = await sup.page.locator('text=admin@inventory.local').count();
   step(`super user sees hidden admin in People: ${supSeesAdmin > 0}`);
+  // audit log: seal, sign-ins, filters, CSV
+  await sup.page.goto(BASE + '/audit');
+  await sup.page.click('button:has-text("Check the seal")');
+  await sup.page.waitForSelector('text=/Intact: all [\\d,]+ entries match their seal/');
+  await shot(sup.page, '16a-audit-sealed');
+  step('super user reads the audit log and the seal is intact');
+  await sup.page.click('nav[aria-label="Kind of entry"] >> text=Sign-ins');
+  await sup.page.waitForSelector('td:has-text("Signed in")');
+  await shot(sup.page, '16b-audit-signins');
+  step('sign-ins are recorded with device');
+  await sup.page.click('nav[aria-label="Kind of entry"] >> text=Direct database edits');
+  // a fresh stack has seed rows written straight to the database; an upgraded one may have none yet
+  await sup.page.waitForSelector('text=/Directly in the database as|Nothing matches these filters/');
+  step('changes made outside the app have their own view');
+  await sup.page.goto(BASE + '/audit?item=' + encodeURIComponent('Nitrile gloves (M)'));
+  await sup.page.waitForSelector('text=E2E: one box torn');
+  step('audit filters by item');
+  const csv = await sup.page.request.get(BASE + '/audit/export?view=signins');
+  const csvText = await csv.text();
+  if (csv.status() !== 200 || !csvText.includes('"Entry","When (IST)"') || !csvText.includes('Signed in')) throw new Error('CSV export failed: ' + csv.status());
+  step('audit CSV export downloads');
 
   // ---------------- user raises a request
   const anil = await signIn(browser, 'anil');
@@ -208,6 +255,18 @@ const step = (msg) => console.log('✓', msg);
   step(`user sees what the store handed them (${myRows} items)`);
   const peopleNames = await anil.page.goto(BASE + '/requests').then(() => anil.page.content());
   if (peopleNames.includes('Atreya Kamat')) throw new Error('user sees admin name somewhere on requests');
+  // guide shows only what a user can do
+  await anil.page.goto(BASE + '/guide');
+  const topics = await anil.page.locator('main section h2').allInnerTexts();
+  const guide = await anil.page.locator('main').innerText();
+  if (!topics.includes('Raising a request') || topics.some((t) => ['Accounts', 'The audit log', 'Receiving a delivery', 'Approving requests'].includes(t)) || /\bAdmin\b/.test(guide)) {
+    throw new Error('user guide shows the wrong sections: ' + topics.join(', '));
+  }
+  await shot(anil.page, '12c-guide', { fullPage: true });
+  step('user guide covers only their own tasks');
+  const csvDenied = await anil.page.request.get(BASE + '/audit/export');
+  if (csvDenied.status() !== 403) throw new Error('user could download the audit log');
+  step('user cannot download the audit log');
 
   // ---------------- admin: invite a new person, roles, audit
   const adm = await signIn(browser, 'admin');
@@ -250,13 +309,22 @@ const step = (msg) => console.log('✓', msg);
 
   // ---------------- returning user sees the code screen
   await store.ctx.clearCookies();
-  const again = await signIn(browser, 'store', { shotVerify: true });
+  const again = await signIn(browser, 'store', { shotVerify: true, tour: 'none' });
   step('returning user prompted for a code and signed in');
 
   // mobile
   await again.page.setViewportSize({ width: 390, height: 844 });
   await again.page.goto(BASE + '/');
   await shot(again.page, '18-mobile');
+  await again.page.goto(BASE + '/guide');
+  await again.page.click('button:has-text("Replay the tour")');
+  const mtour = again.page.locator('[data-testid=tour]');
+  await mtour.locator('button:has-text("Start")').click();
+  await mtour.locator('text=/^2 of/').waitFor();
+  await again.page.waitForTimeout(400);
+  await shot(again.page, '19-mobile-tour');
+  await mtour.locator('button:has-text("Skip tour")').click();
+  step('tour replays from the Guide on a phone');
 
   await browser.close();
   console.log('\nbrowser errors:', errors.length ? '\n  ' + errors.join('\n  ') : 'none');

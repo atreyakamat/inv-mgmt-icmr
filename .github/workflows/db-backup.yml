@@ -1,6 +1,6 @@
 name: Nightly database backup
 
-# Dumps only the `inventory` schema, encrypts it with age (public key only
+# Dumps the `inventory` and `inventory_private` schemas, encrypts it with age (public key only
 # lives in CI; the private key never leaves the owner), and keeps the
 # encrypted file as a workflow artifact for 90 days.
 #
@@ -11,7 +11,11 @@ name: Nightly database backup
 #
 # Restore:
 #   age -d -i backup.key inventory-<stamp>.dump.age > inventory.dump
-#   pg_restore --schema=inventory --no-owner -d "$TARGET_DB_URL" inventory.dump
+#   pg_restore --no-owner -d "$TARGET_DB_URL" inventory.dump
+#
+# Each run also prints the audit log's latest seal (entry number + hash) in the
+# job log. GitHub keeps that log outside the database, so if the audit log is
+# ever rewritten, the printed seals no longer match what the database reports.
 on:
   schedule:
     - cron: '17 21 * * *'   # 02:47 IST daily
@@ -47,10 +51,17 @@ jobs:
         run: |
           set -euo pipefail
           stamp=$(date -u +%Y%m%d-%H%M)
-          pg_dump "$SUPABASE_DB_URL" --schema=inventory --no-owner --no-privileges \
+          pg_dump "$SUPABASE_DB_URL" --schema=inventory --schema=inventory_private --no-owner --no-privileges \
             --format=custom --compress=9 \
           | age -r "$BACKUP_AGE_PUBLIC_KEY" -o "inventory-$stamp.dump.age"
           echo "encrypted backup: $(du -h "inventory-$stamp.dump.age" | cut -f1)"
+
+      - name: Record the audit seal
+        env:
+          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          psql "$SUPABASE_DB_URL" -At -c \
+            "select 'audit seal: entry ' || seq || ', hash ' || encode(hash, 'hex') from inventory_private.audit_head"
 
       - name: Keep encrypted dump
         uses: actions/upload-artifact@v4

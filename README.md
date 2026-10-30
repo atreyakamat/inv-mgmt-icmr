@@ -26,6 +26,22 @@ database (RLS + security-definer functions), not only in the UI.
 Every member must complete authenticator-app MFA; without it the database
 returns nothing except their own profile row.
 
+## Audit log and guide
+
+- **Audit log** (Admin and Super User): every change and every sign-in, with
+  who, when and what changed. Filter by kind, person, dates or item; download
+  as CSV. Changes made outside the app (SQL Editor, psql) are flagged with the
+  database login.
+- **Seal**: each entry stores a SHA-256 hash of itself and the entry before it.
+  "Check the seal" re-reads the whole log and reports the first entry that was
+  edited or removed. The nightly backup job prints the latest seal in its log,
+  outside the database, as an independent record.
+- **Hidden Admin**: to everyone who cannot manage accounts, the Admin appears as
+  an ordinary User (enforced by `inventory.directory()` in the database).
+- **Guide**: a short tour of the menu on each member's first sign-in, tailored
+  to their permissions, and a Guide page with step-by-step help. Content lives
+  in `src/lib/guide.ts`; raise `TOUR_VERSION` to show an updated tour again.
+
 ## Run it offline (Docker)
 
 Everything runs on your machine: Postgres, Supabase Auth (with authenticator
@@ -86,7 +102,7 @@ Every pull request and every push to `main` runs, in GitHub Actions:
 | Job | What it proves |
 | --- | --- |
 | Typecheck, lint, build | the app compiles with zero lint warnings |
-| Database tests | 87 checks on RLS, roles, MFA gating and the request workflow |
+| Database tests | 114 checks on RLS, roles, MFA gating, the request workflow, the audit seal and admin privacy |
 | Offline stack + browser | `docker compose up` from scratch, then every role signs in and does its part in a real browser; fails on any browser error |
 
 Run them locally:

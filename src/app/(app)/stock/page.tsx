@@ -74,6 +74,7 @@ export default async function StockMovementsPage({ searchParams }: PageProps<"/s
     <>
       <PageHeader
         title="Stock movements"
+        help="ledger"
         lead="The ledger: every unit that came in, went out, or moved. Lines cannot be edited; corrections are new lines."
         actions={
           can(me, "stock.write") && (

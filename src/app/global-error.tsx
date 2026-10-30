@@ -7,7 +7,7 @@ export default function GlobalError({ reset }: { error: Error & { digest?: strin
       <body style={{ fontFamily: "system-ui, sans-serif", background: "#f3f5f7", color: "#16233a", padding: "64px 24px" }}>
         <div style={{ maxWidth: 520, margin: "0 auto" }}>
           <h1 style={{ fontSize: 28, margin: 0 }}>Store register is having trouble</h1>
-          <p style={{ color: "#3a4863" }}>Reload the page in a moment. If it keeps happening, tell your admin.</p>
+          <p style={{ color: "#3a4863" }}>Reload the page in a moment. If it keeps happening, tell the Super User.</p>
           <button onClick={reset} style={{ marginTop: 16, padding: "8px 14px", background: "#16233a", color: "#fff", border: 0, borderRadius: 4 }}>
             Try again
           </button>
