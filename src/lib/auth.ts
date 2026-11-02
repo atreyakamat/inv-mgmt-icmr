@@ -1,7 +1,9 @@
 import "server-only";
 import { cache } from "react";
+import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { CLAIMS_HEADER, type ForwardedClaims } from "@/lib/supabase/claims-header";
 import type { Me, PermissionKey } from "@/lib/database.types";
 
 export type AuthState =
@@ -14,14 +16,33 @@ export type AuthState =
   | { kind: "member"; me: Me };
 
 /**
+ * Who is calling, from the proxy's already-verified JWT (see proxy.ts) —
+ * avoids a second network round trip to Supabase Auth on every page. Falls
+ * back to verifying directly if the header is missing for any reason (a
+ * request that somehow bypassed the proxy), so this is never a security
+ * dependency on the proxy having run, only a speed-up when it has.
+ */
+async function callerClaims(): Promise<ForwardedClaims | null> {
+  try {
+    const raw = (await headers()).get(CLAIMS_HEADER);
+    if (raw) return JSON.parse(raw) as ForwardedClaims;
+  } catch {
+    // Malformed or unreadable: fall through to verifying directly.
+  }
+  const supabase = await createClient();
+  const { data } = await supabase.auth.getClaims();
+  return data?.claims.sub ? { sub: data.claims.sub, email: data.claims.email ?? null } : null;
+}
+
+/**
  * One authoritative read of who is calling and what step of sign-in they are
  * at. Cached per request.
  */
 export const getAuthState = cache(async (): Promise<AuthState> => {
-  const supabase = await createClient();
-  const { data: claims } = await supabase.auth.getClaims();
-  if (!claims?.claims.sub) return { kind: "anonymous" };
+  const claims = await callerClaims();
+  if (!claims) return { kind: "anonymous" };
 
+  const supabase = await createClient();
   const { data: me, error } = await supabase.rpc("me");
   if (error) {
     // A missing profile returns null, not an error. An error here means the
@@ -34,7 +55,7 @@ export const getAuthState = cache(async (): Promise<AuthState> => {
           : `The database returned an error: ${error.message}`,
     };
   }
-  if (!me) return { kind: "no_profile", email: String(claims.claims.email ?? "") };
+  if (!me) return { kind: "no_profile", email: claims.email ?? "" };
   if (!me.active) return { kind: "inactive", me };
 
   if (!me.mfa_verified) {
