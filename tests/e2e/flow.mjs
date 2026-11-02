@@ -147,7 +147,7 @@ const step = (msg) => console.log('✓', msg);
   step(`store manager handed over request #${handId}`);
   // can't see admin / people
   await store.page.goto(BASE + '/people');
-  if (!store.page.url().endsWith('/')) throw new Error('store manager reached /people');
+  await store.page.waitForURL(BASE + '/', { timeout: 15000 });
   step('store manager bounced from People');
   await store.page.goto(BASE + '/requests/999999');
   await store.page.waitForSelector('h1:has-text("Not found")');
