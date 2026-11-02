@@ -38,6 +38,7 @@ export default async function RolesPage({ searchParams }: PageProps<"/roles">) {
     <>
       <PageHeader
         title="Roles"
+        help="roles"
         lead="Who can do what. Each role is a set of permissions; change a role and everyone holding it changes with it."
         actions={<Link href="/roles?role=new" className="inline-flex items-center rounded-sm border border-ink bg-ink px-3.5 py-2 text-sm font-medium text-paper hover:bg-ink-2">New role</Link>}
       />

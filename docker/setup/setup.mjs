@@ -431,6 +431,37 @@ async function seed(ids) {
   log("seeded:", JSON.stringify(counts));
 }
 
+// ------------------------------------------------------------------ seal
+// Seed-only: the demo history was re-dated after it was written, which (as it
+// should) breaks the audit seal. Rebuild the chain once so the demo starts
+// with an intact log. Never do this on a real database.
+async function resealAuditLog() {
+  const c = await adminPool.connect();
+  try {
+    await c.query("begin");
+    await c.query("set local session_replication_role = replica");
+    await c.query(`do $$
+      declare r record; v_hash bytea := sha256(convert_to('store-register audit log', 'UTF8'));
+      begin
+        for r in select * from inventory.audit_log order by seq loop
+          update inventory.audit_log
+             set prev_hash = v_hash,
+                 hash = inventory_private.audit_digest(v_hash, r.seq, r.created_at, r.actor_id, r.actor_kind,
+                          r.action, r.table_name, r.row_id, r.old_data, r.new_data, r.note, r.db_user)
+           where id = r.id
+           returning hash into v_hash;
+        end loop;
+        update inventory_private.audit_head set hash = v_hash where id = 1;
+      end $$`);
+    await c.query("commit");
+  } catch (e) {
+    await c.query("rollback");
+    throw e;
+  } finally {
+    c.release();
+  }
+}
+
 // ------------------------------------------------------------------ main
 try {
   await migrate();
@@ -440,6 +471,7 @@ try {
   } else {
     const ids = await createAccounts();
     await seed(ids);
+    await resealAuditLog();
   }
   log("done");
   log(`app:     http://localhost:3000   (password for every demo account: ${DEMO_PASSWORD})`);

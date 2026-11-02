@@ -174,16 +174,25 @@ export function PageHeader({
   title,
   lead,
   actions,
+  help,
 }: {
   title: string;
   lead?: ReactNode;
   actions?: ReactNode;
+  /** Guide topic id; shows a "How this works" link */
+  help?: string;
 }) {
   return (
     <header className="mb-8 flex flex-wrap items-end justify-between gap-4 border-b border-ink pb-5">
       <div>
         <h1 className="text-3xl font-semibold md:text-4xl">{title}</h1>
         {lead && <p className="mt-2 max-w-prose text-ink-2">{lead}</p>}
+        {help && (
+          <Link href={`/guide#${help}`} className="mt-2 inline-flex items-center gap-1.5 text-sm text-ink-3 underline-offset-2 hover:text-ink hover:underline">
+            <span aria-hidden className="grid size-4 place-items-center rounded-full border border-current text-[10px] font-semibold leading-none">?</span>
+            How this works
+          </Link>
+        )}
       </div>
       {actions && <div className="flex flex-wrap gap-2">{actions}</div>}
     </header>

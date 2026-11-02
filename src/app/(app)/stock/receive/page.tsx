@@ -18,6 +18,7 @@ export default async function ReceivePage() {
     <>
       <PageHeader
         title="Receive stock"
+        help="receive"
         lead="Record a delivery as it arrives: where it is going, what came in, and how many. New items can be added to the catalog here."
         actions={<LinkButton href="/stock">Stock movements</LinkButton>}
       />

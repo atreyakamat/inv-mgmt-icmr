@@ -29,6 +29,7 @@ export default async function RequestsPage({ searchParams }: PageProps<"/request
     <>
       <PageHeader
         title="Requests"
+        help="stages"
         lead={seesAll ? "Every request raised in the store." : "Requests you have raised."}
         actions={can(me, "requests.submit") && <LinkButton href="/requests/new" variant="primary">New request</LinkButton>}
       />

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { recordAuthEvent } from "@/lib/auth-events";
 import { Button, Notice } from "@/components/ui";
 import { CodeInput } from "@/components/code-input";
 import { SignOutButton } from "@/components/sign-out-button";
@@ -19,16 +20,18 @@ export function VerifyForm() {
     const totp = factors?.totp.find((f) => f.status === "verified") ?? factors?.totp[0];
     if (fErr || !totp) {
       setPending(false);
-      setError("No authenticator is set up for this account. Ask your admin to reset it.");
+      setError("No authenticator is set up for this account. Ask the Super User to reset it.");
       return;
     }
     const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: totp.id, code });
     if (error) {
+      void recordAuthEvent("code_failed");
       setPending(false);
       setAttempt((a) => a + 1);
       setError("That code did not work. Codes change every 30 seconds; try the current one.");
       return;
     }
+    await recordAuthEvent("sign_in");
     // Full navigation so the server sees the upgraded (aal2) session cookie.
     // eslint-disable-next-line @next/next/no-location-assign-relative-destination
     window.location.assign("/");
@@ -45,7 +48,7 @@ export function VerifyForm() {
         {pending ? "Checking…" : "Verify"}
       </Button>
       <div className="text-center text-sm text-ink-3">
-        Lost your phone? Your admin can reset the authenticator. <SignOutButton className="underline underline-offset-2" />
+        Lost your phone? The Super User can reset the authenticator. <SignOutButton className="underline underline-offset-2" />
       </div>
     </div>
   );

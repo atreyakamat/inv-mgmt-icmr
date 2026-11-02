@@ -277,14 +277,132 @@ reset role;
 update auth.users set email = 'Super.New@co.test' where id = '00000000-0000-0000-0000-00000000000b';
 select pg_temp.check((select email from inventory.profiles where id = '00000000-0000-0000-0000-00000000000b') = 'super.new@co.test', 'profile email follows auth email');
 
+-- Audit log: Super User reads it too; changes say how they were made
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select count(*) from inventory.audit_log) > 20, 'super user reads audit log');
+reset role;
+select pg_temp.check(exists (select 1 from inventory.audit_log where actor_kind = 'member' and db_user is null and action = 'receive_delivery'),
+  'app actions recorded as member actions');
+insert into inventory.audit_log (action, note) values ('manual_fix', 'typed in the SQL editor');
+select pg_temp.check((select actor_kind = 'database' and db_user = session_user from inventory.audit_log where action = 'manual_fix'),
+  'direct database change recorded with database login');
+update inventory.items set reorder_level = reorder_level + 1 where id = 1;
+select pg_temp.check((select actor_kind from inventory.audit_log where table_name = 'items' order by seq desc limit 1) = 'database',
+  'direct table edit flagged as database change');
+
+-- Seal: intact after the whole workflow, readable only with audit.read
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000a');
+select pg_temp.check((inventory.verify_audit_log()->>'ok')::boolean, 'audit seal intact');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000c');
+select pg_temp.expect_error($$select inventory.verify_audit_log()$$, 'permission');
+reset role;
+select pg_temp.expect_error($$truncate inventory.audit_log$$, 'append-only');
+
+-- Seal catches an edited entry, a removed entry and removed newest entries (each rolled back)
+create temp table seal_results (kind text, ok boolean, at bigint);
+do $$
+declare v1 jsonb; v2 jsonb; v3 jsonb;
+begin
+  perform set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000a","aal":"aal2"}', true);
+  alter table inventory.audit_log disable trigger audit_log_immutable;
+
+  begin
+    update inventory.audit_log set note = 'quietly changed' where seq = 5;
+    v1 := inventory.verify_audit_log();  -- variables survive the rollback below
+    raise exception 'undo';
+  exception when raise_exception then null;
+  end;
+  begin
+    delete from inventory.audit_log where seq = 7;
+    v2 := inventory.verify_audit_log();  -- variables survive the rollback below
+    raise exception 'undo';
+  exception when raise_exception then null;
+  end;
+  begin
+    delete from inventory.audit_log where seq = (select max(seq) from inventory.audit_log);
+    v3 := inventory.verify_audit_log();  -- variables survive the rollback below
+    raise exception 'undo';
+  exception when raise_exception then null;
+  end;
+
+  alter table inventory.audit_log enable trigger audit_log_immutable;
+  insert into seal_results values
+    ('edit', (v1->>'ok')::boolean, (v1->>'at')::bigint),
+    ('delete', (v2->>'ok')::boolean, (v2->>'at')::bigint),
+    ('tail', (v3->>'ok')::boolean, (v3->>'at')::bigint);
+end $$;
+select pg_temp.check((select not ok and at = 5 from seal_results where kind = 'edit'), 'seal detects an edited entry');
+select pg_temp.check((select not ok and at = 7 from seal_results where kind = 'delete'), 'seal detects a removed entry');
+select pg_temp.check((select not ok from seal_results where kind = 'tail'), 'seal detects removed newest entries');
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((inventory.verify_audit_log()->>'ok')::boolean, 'audit seal intact again after rollback');
+reset role;
+
+-- Sign-in history
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000010","aal":"aal1","session_id":"s-1","role":"authenticated"}', false);
+set role authenticated;
+select inventory.record_auth_event('sign_in', 'Firefox', '10.0.0.1');
+select inventory.record_auth_event('code_failed', 'Firefox', '10.0.0.1');
+reset role;
+select pg_temp.check(not exists (select 1 from inventory.audit_log where action = 'sign_in' and row_id = 's-1'),
+  'no sign-in recorded before the authenticator code');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-000000000010","aal":"aal2","session_id":"s-1","role":"authenticated"}', false);
+set role authenticated;
+select inventory.record_auth_event('sign_in', 'Firefox on Windows', '10.0.0.1');
+select inventory.record_auth_event('sign_in', 'Firefox on Windows', '10.0.0.1');
+do $$ begin for i in 1..15 loop perform inventory.record_auth_event('code_failed'); end loop; end $$;
+select pg_temp.expect_error($$select inventory.record_auth_event('made_up')$$, 'unknown event');
+reset role;
+select pg_temp.check((select count(*) from inventory.audit_log where action = 'sign_in' and row_id = 's-1') = 1
+  and (select new_data->>'device' from inventory.audit_log where action = 'sign_in' and row_id = 's-1') = 'Firefox on Windows',
+  'one sign-in per session, with device');
+select pg_temp.check((select count(*) from inventory.audit_log where action = 'code_failed'
+  and actor_id = '00000000-0000-0000-0000-000000000010') = 10, 'failed codes are capped');
+select set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-00000000000f","aal":"aal2","session_id":"s-x","role":"authenticated"}', false);
+set role authenticated;
+select inventory.record_auth_event('sign_in');
+reset role;
+select pg_temp.check(not exists (select 1 from inventory.audit_log where row_id = 's-x'), 'accounts outside the register are not recorded');
+
+-- Hidden role holders appear as an ordinary User to everyone who cannot manage accounts
+select pg_temp.as_user('00000000-0000-0000-0000-000000000010');
+select pg_temp.check((select role_name from inventory.directory() where id = '00000000-0000-0000-0000-00000000000a') = 'User',
+  'admin shows as User in the directory');
+select pg_temp.check((select count(*) from inventory.directory()) = 6, 'directory lists every member');
+select pg_temp.check(not exists (select 1 from inventory.directory() where role_name = 'Admin'), 'directory never names the hidden role');
+select pg_temp.check(not exists (select 1 from inventory.profiles where id = '00000000-0000-0000-0000-00000000000a'),
+  'admin profile row stays hidden');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000d');
+select pg_temp.check((select role_name from inventory.directory() where id = '00000000-0000-0000-0000-00000000000a') = 'User',
+  'store manager also sees admin as User');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-00000000000b');
+select pg_temp.check((select role_name from inventory.directory() where id = '00000000-0000-0000-0000-00000000000a') = 'Admin',
+  'super user sees the real role');
+reset role;
+select pg_temp.as_user('00000000-0000-0000-0000-000000000010', 'aal1');
+select pg_temp.check((select count(*) from inventory.directory()) = 0, 'directory needs two-factor');
+reset role;
+
+-- Guide progress
+select pg_temp.as_user('00000000-0000-0000-0000-000000000010');
+select pg_temp.check((inventory.me()->>'tour_version')::int = 0, 'tour not seen yet');
+select inventory.set_tour_version(1);
+select pg_temp.check((inventory.me()->>'tour_version')::int = 1, 'tour progress saved');
+select pg_temp.expect_error($$select * from inventory.member_prefs$$, 'permission denied');
+reset role;
+select pg_temp.check(not exists (select 1 from inventory.audit_log where table_name = 'member_prefs'), 'guide progress is not audit noise');
+
 -- The API schema exposes exactly the workflow functions; access-check helpers live elsewhere
 select pg_temp.check(
   (select array_agg(p.proname::text order by p.proname)
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'inventory' and has_function_privilege('authenticated', p.oid, 'execute'))
-  = array['adjust_stock','approve_request','cancel_request','create_role','delete_role','fulfill_request',
-          'me','receive_delivery','receive_stock','reject_request','review_request','set_member_active',
-          'set_member_role','submit_request','transfer_stock','update_my_name','update_role'],
+  = array['adjust_stock','approve_request','cancel_request','create_role','delete_role','directory','fulfill_request',
+          'me','receive_delivery','receive_stock','record_auth_event','reject_request','review_request','set_member_active',
+          'set_member_role','set_tour_version','submit_request','transfer_stock','update_my_name','update_role','verify_audit_log'],
   'API schema exposes only the workflow functions');
 select pg_temp.check(not exists (
   select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace

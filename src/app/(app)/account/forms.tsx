@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { recordAuthEvent } from "@/lib/auth-events";
 import { ActionForm } from "@/components/action-form";
 import { Button, Field, Input, Notice } from "@/components/ui";
 import { updateName } from "./actions";
@@ -28,6 +29,7 @@ export function PasswordForm() {
     if (password !== String(fd.get("confirm"))) return setState({ ok: false, message: "The two passwords do not match." });
     setPending(true);
     const { error } = await createClient().auth.updateUser({ password });
+    if (!error) await recordAuthEvent("password_set");
     setPending(false);
     setState(error ? { ok: false, message: error.message } : { ok: true, message: "Password changed." });
     if (!error) e.currentTarget.reset();

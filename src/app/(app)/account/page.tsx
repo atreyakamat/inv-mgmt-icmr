@@ -13,7 +13,7 @@ export default async function AccountPage() {
 
   return (
     <>
-      <PageHeader title="Your account" lead={me.email} />
+      <PageHeader title="Your account" lead={me.email} help="signing-in" />
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="space-y-10">
           <NameForm name={me.full_name} />
@@ -21,7 +21,7 @@ export default async function AccountPage() {
         </div>
         <div>
           <h2 className="mb-2 text-lg font-semibold">What you can do</h2>
-          <p className="mb-3 text-sm text-ink-2">Your role is <strong className="text-ink">{me.role.name}</strong>. Two-factor is on; your admin can reset it if you lose your phone.</p>
+          <p className="mb-3 text-sm text-ink-2">Your role is <strong className="text-ink">{me.role.name}</strong>. Two-factor is on; the Super User can reset it if you lose your phone.</p>
           <ul className="divide-y divide-rule-soft border-y border-rule text-sm">
             {(perms ?? []).map((p) => <li key={p.key} className="py-2">{p.description}</li>)}
             {me.permissions.length === 0 && <li className="py-2 text-ink-3">View only.</li>}

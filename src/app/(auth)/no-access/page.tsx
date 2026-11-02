@@ -29,8 +29,8 @@ export default async function NoAccessPage() {
       </h1>
       <p className="mt-3 text-ink-2">
         {state.kind === "inactive"
-          ? "Your account exists but has been switched off. If that is a mistake, ask your admin to reactivate it."
-          : <>You are signed in as <strong className="text-ink">{email}</strong>, but this account has not been added to the store register. Ask your admin to add you.</>}
+          ? "Your account exists but has been switched off. If that is a mistake, ask the Super User to reactivate it."
+          : <>You are signed in as <strong className="text-ink">{email}</strong>, but this account has not been added to the store register. Ask the Super User to add you.</>}
       </p>
       <div className="mt-8">
         <SignOutButton className="rounded-sm border border-rule bg-sheet px-3.5 py-2 text-sm font-medium hover:border-ink-3">

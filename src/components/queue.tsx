@@ -5,6 +5,12 @@ import type { PermissionKey, RequestStatus } from "@/lib/database.types";
 import { Empty, PageHeader, StatusPill, formatDate } from "@/components/ui";
 import { createClient } from "@/lib/supabase/server";
 
+const help: Partial<Record<PermissionKey, string>> = {
+  "requests.review": "review",
+  "requests.approve": "approve",
+  "requests.fulfill": "hand-over",
+};
+
 /** Shared page for the three work queues: review, approve, hand over. */
 export async function QueuePage({
   permission,
@@ -34,7 +40,7 @@ export async function QueuePage({
 
   return (
     <>
-      <PageHeader title={title} lead={lead} />
+      <PageHeader title={title} lead={lead} help={help[permission]} />
       {actionable.length === 0 ? (
         <Empty title={emptyTitle}>{own > 0 && `${own} of your own request${own > 1 ? "s are" : " is"} here, but someone else has to act on ${own > 1 ? "them" : "it"}.`}</Empty>
       ) : (

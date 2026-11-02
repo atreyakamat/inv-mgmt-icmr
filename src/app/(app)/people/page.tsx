@@ -23,6 +23,7 @@ export default async function PeoplePage() {
     <>
       <PageHeader
         title="People"
+        help="people"
         lead="Accounts are created here, never by sign-up. New people get an email link, set a password, then set up their authenticator."
       />
 

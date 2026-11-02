@@ -15,7 +15,7 @@ export default async function NewRequestPage() {
 
   return (
     <>
-      <PageHeader title="New request" lead="Pick what you need and say what it is for. A reviewer and the approver will see it next." />
+      <PageHeader title="New request" lead="Pick what you need and say what it is for. A reviewer and the approver will see it next." help="requests" />
       <NewRequestForm
         items={items.filter((i) => i.active).map((i) => ({ id: i.id, name: i.name, sku: i.sku, unit: i.unit, category_id: i.category_id, in_stock: totals.get(i.id) ?? 0 }))}
         categories={categories.filter((c) => c.active).map((c) => ({ id: c.id, name: c.name }))}

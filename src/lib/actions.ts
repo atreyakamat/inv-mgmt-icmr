@@ -54,7 +54,7 @@ export function guarded(name: string, fn: Action): Action {
         return { ok: false, error: "Some details are missing or not valid. Check the form and try again." };
       }
       console.error(`[action:${name}]`, err);
-      return { ok: false, error: "Something went wrong on our side. Try again; if it keeps happening, tell your admin." };
+      return { ok: false, error: "Something went wrong on our side. Try again; if it keeps happening, tell the Super User." };
     }
   };
 }

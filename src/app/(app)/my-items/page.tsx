@@ -14,6 +14,7 @@ export default async function MyItemsPage() {
     <>
       <PageHeader
         title="My items"
+        help="my-items"
         lead="Everything the store has handed over to you, by category. Counts come from your completed requests."
         actions={<LinkButton href="/requests/new" variant="primary">New request</LinkButton>}
       />
